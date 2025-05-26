@@ -48,6 +48,5 @@ async function generateAIResponse(userInput: string): Promise<string> {
       },
     }
   );
-
   return response.data.choices[0].message.content;
 }
