@@ -12,6 +12,8 @@ export async function POST(req: NextRequest) {
 
     const aiResponse = await generateAIResponse(userMessage);
 
+    console.log(aiResponse + "sss");
+
     return new Response(JSON.stringify({ content: aiResponse }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
