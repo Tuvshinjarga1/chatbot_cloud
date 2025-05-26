@@ -1,554 +1,385 @@
 "use client";
 
-import type React from "react";
+import React, { useEffect, useState } from "react";
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-  MessageCircle,
-  X,
-  Send,
-  Bot,
-  User,
-  Phone,
-  Users,
-  AlertCircle,
-  HelpCircle,
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+// Chatwoot SDK-ийн төрлүүдийг тодорхойлох
+declare global {
+  interface Window {
+    chatwootSDK?: {
+      run: (config: any) => void;
+      toggle: (action: string) => void;
+      setCustomAttributes: (data: any) => void;
+    };
+    $chatwoot?: {
+      toggle: (action: string) => void;
+      setCustomAttributes: (data: any) => void;
+    };
+  }
+}
 
-interface Message {
-  id: string;
-  role: "user" | "assistant" | "agent";
-  content: string;
-  timestamp: Date;
-  type?: "info" | "warning" | "success" | "transfer";
+interface StatusType {
+  message: string;
+  type: "info" | "success" | "error";
 }
 
 interface ChatbotWidgetProps {
-  isOpen: boolean;
-  onToggle: () => void;
-  chatwootConfig?: {
-    websiteToken: string;
-    baseUrl: string;
-  };
-  teamsConfig?: {
-    webhookUrl: string;
-    channelId: string;
-  };
+  isOpen?: boolean;
+  onToggle?: () => void;
 }
 
-// Cloud-ийн ерөнхий мэдээллийн сан
-const KNOWLEDGE_BASE = {
-  keywords: {
-    сервер: "Серверийн үйлчилгээний талаар",
-    төлбөр: "Төлбөрийн мэдээллийн талаар",
-    kubernetes: "Kubernetes кластерийн талаар",
-    docker: "Docker контейнерийн талаар",
-    backup: "Нөөцлөлтийн талаар",
-    ssl: "SSL сертификатын талаар",
-    domain: "Домайн нэрийн талаар",
-    database: "Өгөгдлийн сангийн талаар",
-    monitoring: "Мониторингийн талаар",
-    security: "Аюулгүй байдлын талаар",
-  },
-  responses: {
-    сервер: [
-      "Таны серверийн статус: Бүх үйлчилгээ хэвийн ажиллаж байна.",
-      "Серверийн нөөц: CPU 15%, RAM 45%, диск 25% ашиглагдаж байна.",
-      "Серверийн тохиргоо өөрчлөх бол Settings > Server Management хэсэгт орно уу.",
-    ],
-    төлбөр: [
-      "Таны дараагийн төлбөр 2024-01-15-нд төлөгдөх ёстой.",
-      "Төлбөрийн түүх харахын тулд Billing хэсэгт орно уу.",
-      "Автомат төлбөр тохируулахыг хүсвэл Payment Methods-д карт нэмнэ үү.",
-    ],
-    kubernetes: [
-      "Kubernetes кластер үүсгэхийн тулд: Dashboard > Kubernetes > Create Cluster дарна уу.",
-      "Кластерийн статус харахын тулд kubectl get nodes командыг ашиглана уу.",
-      "Helm chart суулгахын тулд манай Marketplace-г ашиглана уу.",
-    ],
-    docker: [
-      "Docker image push хийхийн тулд: docker push registry.cloudmn.com/your-image",
-      "Container registry-д нэвтрэхийн тулд API key шаардлагатай.",
-      "Docker compose файл ашиглан олон контейнер удирдаж болно.",
-    ],
-    backup: [
-      "Автомат нөөцлөлт тохируулахын тулд Backup Settings хэсэгт орно уу.",
-      "Нөөцлөлтийг сэргээхийн тулд Restore хэсгээс сонгоно уу.",
-      "Өдөр тутмын нөөцлөлт 30 хоног хадгалагдана.",
-    ],
-  },
-};
+const ChatwootWidget: React.FC<ChatbotWidgetProps> = ({ isOpen, onToggle }) => {
+  const [status, setStatus] = useState<StatusType>({
+    message: "Chatwoot SDK ачаалж байна...",
+    type: "info",
+  });
 
-export function ChatbotWidget({
-  isOpen,
-  onToggle,
-  chatwootConfig,
-  teamsConfig,
-}: ChatbotWidgetProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      role: "assistant",
-      content:
-        "Сайн байна уу! Би таны Cloud MN туслах бот байна. Танд хэрхэн тусалж чадах вэ?",
-      timestamp: new Date(),
-    },
-  ]);
-  const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const [mode, setMode] = useState<"auto" | "human" | "chatwoot">("auto");
-  const [chatwootSession, setChatwootSession] = useState<string | null>(null);
+  const updateStatus = (
+    message: string,
+    type: "info" | "success" | "error" = "info"
+  ) => {
+    setStatus({ message, type });
+    console.log(`📊 Status: ${message} (${type})`);
+  };
 
-  // Chatwoot интеграци
-  useEffect(() => {
-    if (chatwootConfig && mode === "chatwoot") {
-      // Chatwoot hosted service-ийн SDK ачаалах (хэрэглэгчийн inbox кодын дагуу)
-      const BASE_URL = chatwootConfig.baseUrl || "https://app.chatwoot.com";
-      const script = document.createElement("script");
-      script.src = `${BASE_URL}/packs/js/sdk.js`;
-      script.defer = true;
-      script.async = true;
+  const testChatwootWidget = () => {
+    console.log("🔧 Widget нээх оролдлого...");
 
-      script.onload = () => {
-        // @ts-ignore
-        window.chatwootSDK.run({
-          websiteToken: chatwootConfig.websiteToken,
-          baseUrl: BASE_URL,
-          locale: "mn", // Монгол хэл
-          type: "standard",
-          launcherTitle: "Манай багтай ярилцах",
-          showPopoutButton: true,
-        });
-      };
-
-      document.head.appendChild(script);
-
-      return () => {
-        // Cleanup хийх
-        if (document.head.contains(script)) {
-          document.head.removeChild(script);
+    if (window.chatwootSDK) {
+      try {
+        // Өөр өөр арга оролдох
+        if (window.$chatwoot && window.$chatwoot.toggle) {
+          window.$chatwoot.toggle("open");
+          console.log("✅ $chatwoot.toggle() ашиглан нээлээ");
+        } else if (window.chatwootSDK.toggle) {
+          window.chatwootSDK.toggle("open");
+          console.log("✅ chatwootSDK.toggle() ашиглан нээлээ");
+        } else {
+          console.warn("⚠️ Toggle функц олдсонгүй");
+          updateStatus("Widget toggle функц олдсонгүй!", "error");
+          return;
         }
-        // @ts-ignore
-        if (window.chatwootSDK) {
-          // @ts-ignore
-          window.chatwootSDK.reset();
-        }
-      };
+
+        updateStatus("Chatwoot widget нээх команд илгээгдлээ!", "success");
+      } catch (error: any) {
+        console.error("❌ Widget нээхэд алдаа:", error);
+        updateStatus("Widget нээхэд алдаа: " + error.message, "error");
+      }
+    } else {
+      console.error("❌ Chatwoot SDK ачаалагдаагүй байна");
+      updateStatus(
+        "Chatwoot SDK ачаалагдаагүй байна! Хуудсыг дахин ачаалана уу.",
+        "error"
+      );
     }
-  }, [chatwootConfig, mode]);
+  };
 
-  // Автомат мессеж сонсох
+  const testWithCustomData = () => {
+    console.log("🔧 Custom data-тай widget нээх оролдлого...");
+
+    if (window.chatwootSDK || window.$chatwoot) {
+      try {
+        const customData = {
+          userId: "test-user-" + Date.now(),
+          source: "test-page",
+          testMode: true,
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent,
+        };
+
+        console.log("📝 Custom data:", customData);
+
+        // Custom attributes тохируулах
+        if (window.$chatwoot && window.$chatwoot.setCustomAttributes) {
+          window.$chatwoot.setCustomAttributes(customData);
+        } else if (
+          window.chatwootSDK &&
+          window.chatwootSDK.setCustomAttributes
+        ) {
+          window.chatwootSDK.setCustomAttributes(customData);
+        }
+
+        // Widget нээх
+        if (window.$chatwoot && window.$chatwoot.toggle) {
+          window.$chatwoot.toggle("open");
+        } else if (window.chatwootSDK && window.chatwootSDK.toggle) {
+          window.chatwootSDK.toggle("open");
+        }
+
+        updateStatus("Custom data-тай widget нээгдлээ!", "success");
+      } catch (error: any) {
+        console.error("❌ Custom data тохируулахад алдаа:", error);
+        updateStatus(
+          "Custom data тохируулахад алдаа: " + error.message,
+          "error"
+        );
+      }
+    } else {
+      updateStatus("Chatwoot SDK ачаалагдаагүй байна!", "error");
+    }
+  };
+
+  const checkSDKStatus = () => {
+    console.log("🔍 SDK статус шалгаж байна...");
+
+    const checks = {
+      "window.chatwootSDK": !!window.chatwootSDK,
+      "window.$chatwoot": !!window.$chatwoot,
+      "chatwootSDK.toggle": !!(window.chatwootSDK && window.chatwootSDK.toggle),
+      "$chatwoot.toggle": !!(window.$chatwoot && window.$chatwoot.toggle),
+    };
+
+    console.log("📊 SDK шалгалтын үр дүн:", checks);
+
+    if (window.chatwootSDK || window.$chatwoot) {
+      updateStatus(
+        "✅ Chatwoot SDK бэлэн байна! Console-г нээж дэлгэрэнгүй мэдээлэл үзнэ үү.",
+        "success"
+      );
+
+      // Widget элементийг DOM-оос хайх
+      const widgetElements = document.querySelectorAll(
+        '[data-widget="chatwoot"], .woot-widget-holder, #chatwoot-widget'
+      );
+      console.log("🔍 Widget элементүүд DOM-д:", widgetElements);
+
+      if (widgetElements.length > 0) {
+        console.log("✅ Widget элементүүд DOM-д байна");
+      } else {
+        console.warn("⚠️ Widget элементүүд DOM-д олдсонгүй");
+      }
+    } else {
+      updateStatus(
+        "❌ Chatwoot SDK ачаалагдаагүй байна! Console-г нээж алдааг шалгана уу.",
+        "error"
+      );
+    }
+  };
+
   useEffect(() => {
-    const handleAutoMessage = (event: CustomEvent) => {
-      const { message } = event.detail;
-      if (message) {
-        setInput(message);
-        // Автоматаар илгээх
-        setTimeout(() => {
-          handleSend();
-        }, 100);
+    // Debug мэдээлэл нэмэх
+    console.log("🚀 Chatwoot SDK ачаалж эхэлж байна...");
+
+    const BASE_URL = "https://app.chatwoot.com";
+    const script = document.createElement("script");
+    script.src = BASE_URL + "/packs/js/sdk.js";
+    script.defer = true;
+    script.async = true;
+
+    script.onload = () => {
+      console.log("✅ Chatwoot SDK script ачаалагдлаа");
+
+      // SDK бэлэн эсэхийг шалгах
+      if (window.chatwootSDK) {
+        console.log("✅ chatwootSDK объект олдлоо");
+
+        try {
+          window.chatwootSDK.run({
+            websiteToken: "atrhYjQJmaBw5vCLzm5yTkHN",
+            baseUrl: BASE_URL,
+            locale: "mn",
+            // Нэмэлт тохиргоо
+            hideMessageBubble: false,
+            position: "right",
+            launcherTitle: "Бидэнтэй холбогдох",
+          });
+
+          console.log("✅ Chatwoot SDK амжилттай эхэллээ");
+          updateStatus(
+            "Chatwoot SDK амжилттай ачаалагдлаа! Widget товчийг дарж үзнэ үү.",
+            "success"
+          );
+
+          // Widget бэлэн эсэхийг шалгах
+          setTimeout(() => {
+            if (window.$chatwoot) {
+              console.log("✅ $chatwoot объект бэлэн байна");
+              updateStatus(
+                "Widget бэлэн байна! Товчийг дарж нээнэ үү.",
+                "success"
+              );
+            } else {
+              console.warn("⚠️ $chatwoot объект олдсонгүй");
+            }
+          }, 2000);
+        } catch (error: any) {
+          console.error("❌ Chatwoot SDK эхлүүлэхэд алдаа:", error);
+          updateStatus("SDK эхлүүлэхэд алдаа: " + error.message, "error");
+        }
+      } else {
+        console.error("❌ chatwootSDK объект олдсонгүй");
+        updateStatus("chatwootSDK объект олдсонгүй!", "error");
       }
     };
 
-    // @ts-ignore
-    window.addEventListener("chatbot-auto-message", handleAutoMessage);
+    script.onerror = (error) => {
+      console.error("❌ Chatwoot SDK ачаалахад алдаа:", error);
+      updateStatus(
+        "Chatwoot SDK ачаалахад алдаа гарлаа! Интернет холболтоо шалгана уу.",
+        "error"
+      );
+    };
 
+    // Timeout нэмэх - 10 секундын дараа ачаалагдаагүй бол алдаа
+    const timeout = setTimeout(() => {
+      if (!window.chatwootSDK) {
+        console.error("❌ Chatwoot SDK 10 секундын дотор ачаалагдсангүй");
+        updateStatus(
+          "SDK ачаалагдахад хэт удаж байна. Интернет холболтоо шалгана уу.",
+          "error"
+        );
+      }
+    }, 10000);
+
+    document.head.appendChild(script);
+
+    // 3 секундын дараа статус шалгах
+    const statusCheck1 = setTimeout(checkSDKStatus, 3000);
+
+    // 5 секундын дараа дахин шалгах
+    const statusCheck2 = setTimeout(() => {
+      console.log("🔄 5 секундын дараах шалгалт...");
+      checkSDKStatus();
+    }, 5000);
+
+    // Cleanup function
     return () => {
-      // @ts-ignore
-      window.removeEventListener("chatbot-auto-message", handleAutoMessage);
+      clearTimeout(timeout);
+      clearTimeout(statusCheck1);
+      clearTimeout(statusCheck2);
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
     };
   }, []);
 
-  // Асуултын төрлийг тодорхойлох
-  const analyzeQuery = (query: string): "auto" | "human" => {
-    const lowerQuery = query.toLowerCase();
-
-    // Хүний туслагч шаардах тохиолдлууд
-    const humanKeywords = [
-      "асуудал",
-      "алдаа",
-      "ажиллахгүй",
-      "тусламж",
-      "яаралтай",
-      "холбогдох",
-      "ярилцах",
-      "дэмжлэг",
-      "шийдэх",
-      "засах",
-    ];
-
-    // Автомат хариулж болох тохиолдлууд
-    const autoKeywords = Object.keys(KNOWLEDGE_BASE.keywords);
-
-    const hasHumanKeywords = humanKeywords.some((keyword) =>
-      lowerQuery.includes(keyword)
-    );
-    const hasAutoKeywords = autoKeywords.some((keyword) =>
-      lowerQuery.includes(keyword)
-    );
-
-    if (hasHumanKeywords && !hasAutoKeywords) {
-      return "human";
-    }
-
-    return "auto";
-  };
-
-  // Автомат хариулт үүсгэх
-  const generateAutoResponse = (query: string): string => {
-    const lowerQuery = query.toLowerCase();
-
-    for (const [keyword, responses] of Object.entries(
-      KNOWLEDGE_BASE.responses
-    )) {
-      if (lowerQuery.includes(keyword)) {
-        return responses[Math.floor(Math.random() * responses.length)];
-      }
-    }
-
-    // Ерөнхий хариулт
-    const generalResponses = [
-      "Танд илүү дэлгэрэнгүй тусламж хэрэгтэй бол хүний ажилтантай холбогдоно уу.",
-      "Энэ асуултын талаар илүү мэдээлэл авахын тулд манай баг руу шилжүүлэх үү?",
-      "Cloud MN-ийн документацийг https://docs.cloudmn.com хаягаас үзэж болно.",
-      "Техникийн дэмжлэгийн багтай холбогдохыг хүсвэл 'хүний туслагч' гэж бичнэ үү.",
-    ];
-
-    return generalResponses[
-      Math.floor(Math.random() * generalResponses.length)
-    ];
-  };
-
-  // Teams-ээр холбох
-  const connectToTeams = async () => {
-    if (!teamsConfig) return;
-
-    try {
-      const response = await fetch(teamsConfig.webhookUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          "@type": "MessageCard",
-          "@context": "http://schema.org/extensions",
-          themeColor: "0076D7",
-          summary: "Cloud MN - Шинэ дэмжлэгийн хүсэлт",
-          sections: [
-            {
-              activityTitle: "Cloud MN Дэмжлэг",
-              activitySubtitle: "Шинэ хэрэглэгч тусламж хүсч байна",
-              activityImage: "https://cloudmn.com/logo.png",
-              facts: [
-                {
-                  name: "Хэрэглэгч:",
-                  value: "Dashboard User",
-                },
-                {
-                  name: "Цаг:",
-                  value: new Date().toLocaleString("mn-MN"),
-                },
-              ],
-              markdown: true,
-            },
-          ],
-          potentialAction: [
-            {
-              "@type": "OpenUri",
-              name: "Chatwoot-д харах",
-              targets: [
-                {
-                  os: "default",
-                  uri: chatwootConfig?.baseUrl || "#",
-                },
-              ],
-            },
-          ],
-        }),
-      });
-
-      if (response.ok) {
-        const notificationMessage: Message = {
-          id: Date.now().toString(),
-          role: "assistant",
-          content:
-            "✅ Манай баг Teams-ээр мэдэгдэл авлаа. Тэд удахгүй танд хариулах болно.",
-          timestamp: new Date(),
-          type: "success",
-        };
-        setMessages((prev) => [...prev, notificationMessage]);
-      }
-    } catch (error) {
-      console.error("Teams notification failed:", error);
-    }
-  };
-
-  // Chatwoot руу шилжүүлэх
-  const transferToChatwoot = () => {
-    setMode("chatwoot");
-    const transferMessage: Message = {
-      id: Date.now().toString(),
-      role: "assistant",
-      content:
-        "🔄 Таныг манай дэмжлэгийн багийн ажилтан руу шилжүүлж байна. Chatwoot цонх нээгдэх болно.",
-      timestamp: new Date(),
-      type: "transfer",
-    };
-    setMessages((prev) => [...prev, transferMessage]);
-
-    // Chatwoot widget-г нээх (hosted service)
-    setTimeout(() => {
-      // @ts-ignore
-      if (window.chatwootSDK) {
-        // @ts-ignore
-        window.chatwootSDK.toggle("open");
-
-        // Одоогийн харилцааг Chatwoot руу дамжуулах
-        const conversationHistory = messages
-          .map(
-            (msg) =>
-              `${msg.role === "user" ? "Хэрэглэгч" : "Бот"}: ${msg.content}`
-          )
-          .join("\n");
-
-        // @ts-ignore
-        window.chatwootSDK.setCustomAttributes({
-          previousConversation: conversationHistory,
-          transferredFromBot: true,
-          transferTime: new Date().toISOString(),
-        });
-      }
-    }, 1000);
-  };
-
-  const handleSend = async () => {
-    if (!input.trim()) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: input,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    const currentInput = input;
-    setInput("");
-    setIsTyping(true);
-
-    // Асуултын төрлийг шинжлэх
-    const queryType = analyzeQuery(currentInput);
-
-    setTimeout(() => {
-      let responseContent: string;
-      let messageType: Message["type"] = "info";
-
-      if (
-        queryType === "human" ||
-        currentInput.toLowerCase().includes("хүний туслагч")
-      ) {
-        responseContent =
-          "Би танд хүний ажилтантай холбогдохыг санал болгож байна. Та дараах сонголтуудаас сонгоно уу:";
-        messageType = "warning";
-      } else {
-        responseContent = generateAutoResponse(currentInput);
-      }
-
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: responseContent,
-        timestamp: new Date(),
-        type: messageType,
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
-
-      // Хүний туслагч шаардах тохиолдолд сонголт харуулах
-      if (
-        queryType === "human" ||
-        currentInput.toLowerCase().includes("хүний туслагч")
-      ) {
-        setTimeout(() => {
-          const optionsMessage: Message = {
-            id: (Date.now() + 2).toString(),
-            role: "assistant",
-            content:
-              "🔹 Chatwoot-ээр дэлгэрэнгүй ярилцах\n🔹 Teams-ээр яаралтай холбогдох\n🔹 Автомат туслагчаар үргэлжлүүлэх",
-            timestamp: new Date(),
-            type: "info",
-          };
-          setMessages((prev) => [...prev, optionsMessage]);
-        }, 500);
-      }
-
-      setIsTyping(false);
-    }, 1500);
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  return (
-    <>
-      {/* Chat Toggle Button */}
-      <Button
-        onClick={onToggle}
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 z-50"
-        size="icon"
+  // Хэрэв isOpen болон onToggle props дамжуулагдсан бол энгийн toggle товч харуулах
+  if (isOpen !== undefined && onToggle) {
+    return (
+      <div
+        className={`fixed bottom-4 right-4 z-50 ${isOpen ? "block" : "hidden"}`}
       >
-        {isOpen ? (
-          <X className="h-6 w-6" />
-        ) : (
-          <MessageCircle className="h-6 w-6" />
-        )}
-      </Button>
-
-      {/* Chat Widget */}
-      {isOpen && (
-        <Card className="fixed bottom-24 right-6 w-96 min-h-[500px] shadow-xl z-40 flex flex-col">
-          <CardHeader className="bg-blue-600 text-white rounded-t-lg">
-            <CardTitle className="flex items-center space-x-2">
-              <Bot className="h-5 w-5" />
-              <span>Cloud MN Туслах</span>
-              <Badge variant="secondary" className="ml-auto">
-                {mode === "auto"
-                  ? "Автомат"
-                  : mode === "chatwoot"
-                  ? "Chatwoot"
-                  : "Хүний туслагч"}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-
-          <CardContent className="flex-1 flex flex-col p-0">
-            {/* Action Buttons */}
-            <div className="p-2 border-b bg-gray-50 flex space-x-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={transferToChatwoot}
-                className="flex-1 text-xs"
-                disabled={!chatwootConfig}
+        <div className="bg-white rounded-lg shadow-xl border max-w-sm">
+          <div className="p-4 border-b flex justify-between items-center">
+            <h3 className="font-semibold text-gray-800">Chatwoot Тест</h3>
+            <button
+              onClick={onToggle}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="p-4">
+            <div
+              className={`p-3 mb-3 rounded text-sm ${
+                status.type === "success"
+                  ? "bg-green-100 text-green-800"
+                  : status.type === "error"
+                  ? "bg-red-100 text-red-800"
+                  : "bg-blue-100 text-blue-800"
+              }`}
+            >
+              {status.message}
+            </div>
+            <div className="space-y-2">
+              <button
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm"
+                onClick={testChatwootWidget}
               >
-                <HelpCircle className="h-3 w-3 mr-1" />
-                Chatwoot
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={connectToTeams}
-                className="flex-1 text-xs"
-                disabled={!teamsConfig}
+                Widget нээх
+              </button>
+              <button
+                className="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded text-sm"
+                onClick={checkSDKStatus}
               >
-                <Phone className="h-3 w-3 mr-1" />
-                Teams
-              </Button>
+                Статус шалгах
+              </button>
             </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {messages.map((message) => (
-                <div key={message.id}>
-                  <div
-                    className={`flex ${
-                      message.role === "user" ? "justify-end" : "justify-start"
-                    }`}
-                  >
-                    <div
-                      className={`max-w-[80%] rounded-lg p-3 ${
-                        message.role === "user"
-                          ? "bg-blue-600 text-white"
-                          : message.type === "warning"
-                          ? "bg-orange-100 text-orange-900 border border-orange-200"
-                          : message.type === "success"
-                          ? "bg-green-100 text-green-900 border border-green-200"
-                          : message.type === "transfer"
-                          ? "bg-purple-100 text-purple-900 border border-purple-200"
-                          : "bg-gray-100 text-gray-900"
-                      }`}
-                    >
-                      <div className="flex items-start space-x-2">
-                        {message.role === "assistant" && (
-                          <Bot className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        )}
-                        {message.role === "user" && (
-                          <User className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        )}
-                        {message.role === "agent" && (
-                          <Users className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        )}
-                        <div className="text-sm whitespace-pre-line">
-                          {message.content}
-                        </div>
-                      </div>
-                      <div className="text-xs opacity-70 mt-1">
-                        {message.timestamp.toLocaleTimeString("mn-MN", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+  // Анхны бүтэн тест хуудас
+  return (
+    <div className="max-w-4xl mx-auto p-5 bg-gray-50 min-h-screen">
+      <div className="bg-white p-8 rounded-lg shadow-lg">
+        <h1 className="text-3xl font-bold mb-6 text-gray-800">
+          🤖 Chatwoot Интеграци Тест
+        </h1>
 
-              {isTyping && (
-                <div className="flex justify-start">
-                  <div className="bg-gray-100 rounded-lg p-3 max-w-[80%]">
-                    <div className="flex items-center space-x-2">
-                      <Bot className="h-4 w-4" />
-                      <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                        <div
-                          className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                          style={{ animationDelay: "0.1s" }}
-                        ></div>
-                        <div
-                          className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                          style={{ animationDelay: "0.2s" }}
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+        <div
+          className={`p-4 mb-4 rounded-lg border-l-4 ${
+            status.type === "success"
+              ? "border-green-500 bg-green-50 text-green-800"
+              : status.type === "error"
+              ? "border-red-500 bg-red-50 text-red-800"
+              : "border-blue-500 bg-blue-50 text-blue-800"
+          }`}
+        >
+          {status.message}
+        </div>
 
-            {/* Input */}
-            <div className="border-t p-4">
-              <div className="flex space-x-2">
-                <Input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Асуулт бичнэ үү..."
-                  className="flex-1"
-                />
-                <Button
-                  onClick={handleSend}
-                  size="icon"
-                  disabled={!input.trim()}
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="text-xs text-gray-500 mt-2">
-                Enter дарж илгээх, Shift+Enter шинэ мөр
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </>
+        <h2 className="text-xl font-semibold mb-4 text-gray-700">
+          Тест товчнууд:
+        </h2>
+        <div className="space-y-3 mb-6">
+          <button
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            onClick={testChatwootWidget}
+          >
+            Chatwoot Widget нээх
+          </button>
+
+          <button
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors ml-3"
+            onClick={testWithCustomData}
+          >
+            Custom Data-тай нээх
+          </button>
+
+          <button
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors ml-3"
+            onClick={checkSDKStatus}
+          >
+            SDK статус шалгах
+          </button>
+        </div>
+
+        <h2 className="text-xl font-semibold mb-4 text-gray-700">
+          Тохиргооны мэдээлэл:
+        </h2>
+        <ul className="list-disc list-inside mb-6 space-y-2 text-gray-600">
+          <li>
+            <strong>Website Token:</strong> atrhYjQJmaBw5vCLzm5yTkHN
+          </li>
+          <li>
+            <strong>Base URL:</strong> https://app.chatwoot.com
+          </li>
+          <li>
+            <strong>SDK Path:</strong> /packs/js/sdk.js
+          </li>
+        </ul>
+
+        <h2 className="text-xl font-semibold mb-4 text-gray-700">
+          Тест хийх заавар:
+        </h2>
+        <ol className="list-decimal list-inside space-y-2 text-gray-600">
+          <li>
+            Энэ хуудас ачаалагдсаны дараа Chatwoot SDK автоматаар ачаалагдана
+          </li>
+          <li>
+            "Chatwoot Widget нээх" товчийг дарж widget нээгдэх эсэхийг шалгана
+            уу
+          </li>
+          <li>Widget дээр мессеж илгээж үзнэ үү</li>
+          <li>Chatwoot dashboard-д орж мессеж ирсэн эсэхийг шалгана уу</li>
+        </ol>
+      </div>
+    </div>
   );
-}
+};
+
+// Named export болон default export хоёуланг нь хийх
+export { ChatwootWidget };
+export default ChatwootWidget;

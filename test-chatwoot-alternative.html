@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="mn">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chatwoot Тест (Alternative) - Cloud MN</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .container {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .test-button {
+        background: #2563eb;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        cursor: pointer;
+        margin: 10px;
+        font-size: 14px;
+      }
+      .test-button:hover {
+        background: #1d4ed8;
+      }
+      .status {
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 6px;
+        border-left: 4px solid #2563eb;
+        background: #eff6ff;
+      }
+      .success {
+        border-left-color: #10b981;
+        background: #ecfdf5;
+        color: #065f46;
+      }
+      .error {
+        border-left-color: #ef4444;
+        background: #fef2f2;
+        color: #991b1b;
+      }
+      .warning {
+        border-left-color: #f59e0b;
+        background: #fffbeb;
+        color: #92400e;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🤖 Chatwoot Тест (Alternative)</h1>
+
+      <div class="status" id="status">Chatwoot SDK ачаалж байна...</div>
+
+      <h2>Тест товчнууд:</h2>
+      <button class="test-button" onclick="testChatwootWidget()">
+        Widget нээх
+      </button>
+
+      <button class="test-button" onclick="testManualInit()">
+        Manual Init
+      </button>
+
+      <button class="test-button" onclick="checkSDKStatus()">SDK статус</button>
+
+      <button class="test-button" onclick="testDifferentMethod()">
+        Өөр арга оролдох
+      </button>
+
+      <h2>Тохиргооны мэдээлэл:</h2>
+      <ul>
+        <li><strong>Website Token:</strong> demo-token (тест зорилгоор)</li>
+        <li><strong>Base URL:</strong> https://app.chatwoot.com</li>
+        <li><strong>Fallback URL:</strong> https://widget.chatwoot.com</li>
+      </ul>
+
+      <div class="status warning">
+        <strong>Анхаар:</strong> Энэ нь тест файл бөгөөд demo token ашиглаж
+        байна. Жинхэнэ website token-оо ашиглахын тулд эх файлыг засварлана уу.
+      </div>
+    </div>
+
+    <!-- Chatwoot SDK - Alternative approach -->
+    <script>
+      console.log("🚀 Alternative Chatwoot тест эхэлж байна...");
+
+      let sdkLoaded = false;
+      let initAttempts = 0;
+
+      function updateStatus(message, type = "info") {
+        const statusEl = document.getElementById("status");
+        statusEl.textContent = message;
+        statusEl.className = `status ${type}`;
+        console.log(`📊 Status: ${message} (${type})`);
+      }
+
+      function loadChatwootSDK(baseUrl = "https://app.chatwoot.com") {
+        return new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = `${baseUrl}/packs/js/sdk.js`;
+          script.async = true;
+          script.defer = true;
+
+          script.onload = () => {
+            console.log(`✅ SDK ачаалагдлаа: ${baseUrl}`);
+            sdkLoaded = true;
+            resolve();
+          };
+
+          script.onerror = () => {
+            console.error(`❌ SDK ачаалагдсангүй: ${baseUrl}`);
+            reject(new Error(`Failed to load from ${baseUrl}`));
+          };
+
+          document.head.appendChild(script);
+        });
+      }
+
+      async function initializeChatwoot() {
+        initAttempts++;
+        console.log(`🔄 Chatwoot эхлүүлэх оролдлого #${initAttempts}`);
+
+        try {
+          // Эхлээд app.chatwoot.com-оос оролдох
+          await loadChatwootSDK("https://app.chatwoot.com");
+        } catch (error) {
+          console.warn(
+            "⚠️ app.chatwoot.com-оос ачаалагдсангүй, widget.chatwoot.com оролдож байна..."
+          );
+          try {
+            await loadChatwootSDK("https://widget.chatwoot.com");
+          } catch (error2) {
+            console.error("❌ Хоёр URL-аас ч ачаалагдсангүй");
+            updateStatus(
+              "SDK ачаалагдсангүй! Интернет холболтоо шалгана уу.",
+              "error"
+            );
+            return;
+          }
+        }
+
+        // SDK ачаалагдсаны дараа эхлүүлэх
+        if (window.chatwootSDK) {
+          try {
+            window.chatwootSDK.run({
+              websiteToken: "atrhYjQJmaBw5vCLzm5yTkHN", // Танай жинхэнэ token
+              baseUrl: "https://app.chatwoot.com",
+              locale: "mn",
+              hideMessageBubble: false,
+              position: "right",
+              launcherTitle: "Бидэнтэй холбогдох",
+            });
+
+            console.log("✅ Chatwoot амжилттай эхэллээ");
+            updateStatus(
+              "Chatwoot бэлэн байна! Widget товчийг дарж үзнэ үү.",
+              "success"
+            );
+
+            // 2 секундын дараа $chatwoot шалгах
+            setTimeout(() => {
+              if (window.$chatwoot) {
+                console.log("✅ $chatwoot объект бэлэн");
+                updateStatus("Widget бүрэн бэлэн байна!", "success");
+              } else {
+                console.warn("⚠️ $chatwoot объект олдсонгүй");
+                updateStatus(
+                  "SDK ачаалагдсан боловч widget бэлэн биш байна",
+                  "warning"
+                );
+              }
+            }, 2000);
+          } catch (error) {
+            console.error("❌ SDK эхлүүлэхэд алдаа:", error);
+            updateStatus(`SDK эхлүүлэхэд алдаа: ${error.message}`, "error");
+          }
+        } else {
+          console.error("❌ chatwootSDK объект олдсонгүй");
+          updateStatus("chatwootSDK объект олдсонгүй!", "error");
+        }
+      }
+
+      function testChatwootWidget() {
+        console.log("🔧 Widget нээх тест...");
+
+        const methods = [
+          () => window.$chatwoot && window.$chatwoot.toggle("open"),
+          () => window.chatwootSDK && window.chatwootSDK.toggle("open"),
+          () => window.$chatwoot && window.$chatwoot.show(),
+          () => window.chatwootSDK && window.chatwootSDK.show(),
+        ];
+
+        let success = false;
+
+        for (let i = 0; i < methods.length; i++) {
+          try {
+            if (methods[i]()) {
+              console.log(`✅ Арга #${i + 1} амжилттай`);
+              success = true;
+              break;
+            }
+          } catch (error) {
+            console.log(`❌ Арга #${i + 1} амжилтгүй:`, error.message);
+          }
+        }
+
+        if (success) {
+          updateStatus("Widget нээх команд илгээгдлээ!", "success");
+        } else {
+          updateStatus("Widget нээх боломжгүй байна!", "error");
+        }
+      }
+
+      function testManualInit() {
+        console.log("🔧 Manual initialization тест...");
+
+        if (!sdkLoaded) {
+          updateStatus("SDK ачаалагдаагүй байна!", "error");
+          return;
+        }
+
+        // Manual initialization оролдох
+        try {
+          if (window.chatwootSDK) {
+            window.chatwootSDK.run({
+              websiteToken: "atrhYjQJmaBw5vCLzm5yTkHN",
+              baseUrl: "https://app.chatwoot.com",
+              locale: "en", // Англи хэл оролдох
+              hideMessageBubble: false,
+            });
+            updateStatus("Manual initialization хийгдлээ!", "success");
+          }
+        } catch (error) {
+          console.error("❌ Manual init алдаа:", error);
+          updateStatus(`Manual init алдаа: ${error.message}`, "error");
+        }
+      }
+
+      function testDifferentMethod() {
+        console.log("🔧 Өөр арга тест...");
+
+        // DOM дээр widget элемент байгаа эсэхийг шалгах
+        const selectors = [
+          '[data-widget="chatwoot"]',
+          ".woot-widget-holder",
+          "#chatwoot-widget",
+          ".chatwoot-widget",
+          'iframe[src*="chatwoot"]',
+        ];
+
+        let found = false;
+        selectors.forEach((selector) => {
+          const elements = document.querySelectorAll(selector);
+          if (elements.length > 0) {
+            console.log(`✅ Олдсон элемент: ${selector}`, elements);
+            found = true;
+          }
+        });
+
+        if (found) {
+          updateStatus("Widget элементүүд DOM-д байна!", "success");
+        } else {
+          updateStatus("Widget элементүүд DOM-д олдсонгүй", "warning");
+        }
+
+        // Global объектуудыг шалгах
+        const globals = ["chatwootSDK", "$chatwoot", "Chatwoot", "chatwoot"];
+        globals.forEach((name) => {
+          if (window[name]) {
+            console.log(`✅ Global объект олдлоо: ${name}`, window[name]);
+          }
+        });
+      }
+
+      function checkSDKStatus() {
+        console.log("🔍 Дэлгэрэнгүй статус шалгалт...");
+
+        const status = {
+          sdkLoaded,
+          initAttempts,
+          chatwootSDK: !!window.chatwootSDK,
+          $chatwoot: !!window.$chatwoot,
+          userAgent: navigator.userAgent,
+          timestamp: new Date().toISOString(),
+        };
+
+        console.log("📊 Бүрэн статус:", status);
+
+        if (status.chatwootSDK || status.$chatwoot) {
+          updateStatus("SDK бэлэн байна! Console-г үзнэ үү.", "success");
+        } else {
+          updateStatus("SDK бэлэн биш байна!", "error");
+        }
+      }
+
+      // Хуудас ачаалагдсаны дараа эхлүүлэх
+      document.addEventListener("DOMContentLoaded", () => {
+        console.log("📄 DOM бэлэн, Chatwoot эхлүүлж байна...");
+        initializeChatwoot();
+      });
+
+      // 5 секундын дараа статус шалгах
+      setTimeout(checkSDKStatus, 5000);
+    </script>
+  </body>
+</html>

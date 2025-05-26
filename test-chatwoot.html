@@ -91,6 +91,9 @@
 
     <!-- Chatwoot SDK -->
     <script>
+      // Debug мэдээлэл нэмэх
+      console.log("🚀 Chatwoot SDK ачаалж эхэлж байна...");
+
       (function (d, t) {
         var BASE_URL = "https://app.chatwoot.com";
         var g = d.createElement(t),
@@ -99,61 +102,201 @@
         g.defer = true;
         g.async = true;
         s.parentNode.insertBefore(g, s);
-        g.onload = function () {
-          window.chatwootSDK.run({
-            websiteToken: "atrhYjQJmaBw5vCLzm5yTkHN",
-            baseUrl: BASE_URL,
-            locale: "mn",
-          });
 
-          updateStatus("Chatwoot SDK амжилттай ачаалагдлаа!", "success");
+        g.onload = function () {
+          console.log("✅ Chatwoot SDK script ачаалагдлаа");
+
+          // SDK бэлэн эсэхийг шалгах
+          if (window.chatwootSDK) {
+            console.log("✅ chatwootSDK объект олдлоо");
+
+            try {
+              window.chatwootSDK.run({
+                websiteToken: "atrhYjQJmaBw5vCLzm5yTkHN",
+                baseUrl: BASE_URL,
+                locale: "mn",
+                // Нэмэлт тохиргоо
+                hideMessageBubble: false,
+                position: "right",
+                launcherTitle: "Бидэнтэй холбогдох",
+              });
+
+              console.log("✅ Chatwoot SDK амжилттай эхэллээ");
+              updateStatus(
+                "Chatwoot SDK амжилттай ачаалагдлаа! Widget товчийг дарж үзнэ үү.",
+                "success"
+              );
+
+              // Widget бэлэн эсэхийг шалгах
+              setTimeout(() => {
+                if (window.$chatwoot) {
+                  console.log("✅ $chatwoot объект бэлэн байна");
+                  updateStatus(
+                    "Widget бэлэн байна! Товчийг дарж нээнэ үү.",
+                    "success"
+                  );
+                } else {
+                  console.warn("⚠️ $chatwoot объект олдсонгүй");
+                }
+              }, 2000);
+            } catch (error) {
+              console.error("❌ Chatwoot SDK эхлүүлэхэд алдаа:", error);
+              updateStatus("SDK эхлүүлэхэд алдаа: " + error.message, "error");
+            }
+          } else {
+            console.error("❌ chatwootSDK объект олдсонгүй");
+            updateStatus("chatwootSDK объект олдсонгүй!", "error");
+          }
         };
-        g.onerror = function () {
-          updateStatus("Chatwoot SDK ачаалахад алдаа гарлаа!", "error");
+
+        g.onerror = function (error) {
+          console.error("❌ Chatwoot SDK ачаалахад алдаа:", error);
+          updateStatus(
+            "Chatwoot SDK ачаалахад алдаа гарлаа! Интернет холболтоо шалгана уу.",
+            "error"
+          );
         };
+
+        // Timeout нэмэх - 10 секундын дараа ачаалагдаагүй бол алдаа
+        setTimeout(() => {
+          if (!window.chatwootSDK) {
+            console.error("❌ Chatwoot SDK 10 секундын дотор ачаалагдсангүй");
+            updateStatus(
+              "SDK ачаалагдахад хэт удаж байна. Интернет холболтоо шалгана уу.",
+              "error"
+            );
+          }
+        }, 10000);
       })(document, "script");
 
       function updateStatus(message, type = "info") {
         const statusEl = document.getElementById("status");
         statusEl.textContent = message;
         statusEl.className = `status ${type}`;
+        console.log(`📊 Status: ${message} (${type})`);
       }
 
       function testChatwootWidget() {
+        console.log("🔧 Widget нээх оролдлого...");
+
         if (window.chatwootSDK) {
-          window.chatwootSDK.toggle("open");
-          updateStatus("Chatwoot widget нээгдлээ!", "success");
+          try {
+            // Өөр өөр арга оролдох
+            if (window.$chatwoot && window.$chatwoot.toggle) {
+              window.$chatwoot.toggle("open");
+              console.log("✅ $chatwoot.toggle() ашиглан нээлээ");
+            } else if (window.chatwootSDK.toggle) {
+              window.chatwootSDK.toggle("open");
+              console.log("✅ chatwootSDK.toggle() ашиглан нээлээ");
+            } else {
+              console.warn("⚠️ Toggle функц олдсонгүй");
+              updateStatus("Widget toggle функц олдсонгүй!", "error");
+              return;
+            }
+
+            updateStatus("Chatwoot widget нээх команд илгээгдлээ!", "success");
+          } catch (error) {
+            console.error("❌ Widget нээхэд алдаа:", error);
+            updateStatus("Widget нээхэд алдаа: " + error.message, "error");
+          }
         } else {
-          updateStatus("Chatwoot SDK ачаалагдаагүй байна!", "error");
+          console.error("❌ Chatwoot SDK ачаалагдаагүй байна");
+          updateStatus(
+            "Chatwoot SDK ачаалагдаагүй байна! Хуудсыг дахин ачаалана уу.",
+            "error"
+          );
         }
       }
 
       function testWithCustomData() {
-        if (window.chatwootSDK) {
-          window.chatwootSDK.setCustomAttributes({
-            userId: "test-user-" + Date.now(),
-            source: "test-page",
-            testMode: true,
-            timestamp: new Date().toISOString(),
-          });
-          window.chatwootSDK.toggle("open");
-          updateStatus("Custom data-тай widget нээгдлээ!", "success");
+        console.log("🔧 Custom data-тай widget нээх оролдлого...");
+
+        if (window.chatwootSDK || window.$chatwoot) {
+          try {
+            const customData = {
+              userId: "test-user-" + Date.now(),
+              source: "test-page",
+              testMode: true,
+              timestamp: new Date().toISOString(),
+              userAgent: navigator.userAgent,
+            };
+
+            console.log("📝 Custom data:", customData);
+
+            // Custom attributes тохируулах
+            if (window.$chatwoot && window.$chatwoot.setCustomAttributes) {
+              window.$chatwoot.setCustomAttributes(customData);
+            } else if (window.chatwootSDK.setCustomAttributes) {
+              window.chatwootSDK.setCustomAttributes(customData);
+            }
+
+            // Widget нээх
+            if (window.$chatwoot && window.$chatwoot.toggle) {
+              window.$chatwoot.toggle("open");
+            } else if (window.chatwootSDK.toggle) {
+              window.chatwootSDK.toggle("open");
+            }
+
+            updateStatus("Custom data-тай widget нээгдлээ!", "success");
+          } catch (error) {
+            console.error("❌ Custom data тохируулахад алдаа:", error);
+            updateStatus(
+              "Custom data тохируулахад алдаа: " + error.message,
+              "error"
+            );
+          }
         } else {
           updateStatus("Chatwoot SDK ачаалагдаагүй байна!", "error");
         }
       }
 
       function checkSDKStatus() {
-        if (window.chatwootSDK) {
-          updateStatus("✅ Chatwoot SDK бэлэн байна!", "success");
-          console.log("Chatwoot SDK:", window.chatwootSDK);
+        console.log("🔍 SDK статус шалгаж байна...");
+
+        const checks = {
+          "window.chatwootSDK": !!window.chatwootSDK,
+          "window.$chatwoot": !!window.$chatwoot,
+          "chatwootSDK.toggle": !!(
+            window.chatwootSDK && window.chatwootSDK.toggle
+          ),
+          "$chatwoot.toggle": !!(window.$chatwoot && window.$chatwoot.toggle),
+        };
+
+        console.log("📊 SDK шалгалтын үр дүн:", checks);
+
+        if (window.chatwootSDK || window.$chatwoot) {
+          updateStatus(
+            "✅ Chatwoot SDK бэлэн байна! Console-г нээж дэлгэрэнгүй мэдээлэл үзнэ үү.",
+            "success"
+          );
+
+          // Widget элементийг DOM-оос хайх
+          const widgetElements = document.querySelectorAll(
+            '[data-widget="chatwoot"], .woot-widget-holder, #chatwoot-widget'
+          );
+          console.log("🔍 Widget элементүүд DOM-д:", widgetElements);
+
+          if (widgetElements.length > 0) {
+            console.log("✅ Widget элементүүд DOM-д байна");
+          } else {
+            console.warn("⚠️ Widget элементүүд DOM-д олдсонгүй");
+          }
         } else {
-          updateStatus("❌ Chatwoot SDK ачаалагдаагүй байна!", "error");
+          updateStatus(
+            "❌ Chatwoot SDK ачаалагдаагүй байна! Console-г нээж алдааг шалгана уу.",
+            "error"
+          );
         }
       }
 
       // 3 секундын дараа статус шалгах
       setTimeout(checkSDKStatus, 3000);
+
+      // 5 секундын дараа дахин шалгах
+      setTimeout(() => {
+        console.log("🔄 5 секундын дараах шалгалт...");
+        checkSDKStatus();
+      }, 5000);
     </script>
   </body>
 </html>

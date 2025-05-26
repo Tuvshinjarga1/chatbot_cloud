@@ -1,13 +1,25 @@
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 
-export function Header() {
+interface HeaderProps {
+  onChatToggle?: () => void;
+}
+
+export function Header({ onChatToggle }: HeaderProps) {
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <h1 className="text-2xl font-semibold text-gray-900">Хэрэглэгчийн мэдээзэл</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">
+            Хэрэглэгчийн мэдээзэл
+          </h1>
           <Select defaultValue="all">
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Төсөл үүдрэх" />
@@ -27,6 +39,11 @@ export function Header() {
           <Button variant="outline">Үйлчилгээний нэхцөл</Button>
           <Button variant="outline">Гарын авлага</Button>
           <Button variant="outline">Төлбөр</Button>
+          {onChatToggle && (
+            <Button variant="outline" onClick={onChatToggle}>
+              💬 Тусламж
+            </Button>
+          )}
           <Button>Хөлбөө өөрөх</Button>
           <Button>Туршин ажуулах</Button>
           <div className="flex items-center space-x-2">
@@ -36,5 +53,5 @@ export function Header() {
         </div>
       </div>
     </header>
-  )
+  );
 }
