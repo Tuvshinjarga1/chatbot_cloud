@@ -415,7 +415,7 @@ export function ChatbotWidget({
 
       {/* Chat Widget */}
       {isOpen && (
-        <Card className="fixed bottom-24 right-6 w-96 h-[500px] shadow-xl z-40 flex flex-col">
+        <Card className="fixed bottom-24 right-6 w-96 min-h-[500px] shadow-xl z-40 flex flex-col">
           <CardHeader className="bg-blue-600 text-white rounded-t-lg">
             <CardTitle className="flex items-center space-x-2">
               <Bot className="h-5 w-5" />
