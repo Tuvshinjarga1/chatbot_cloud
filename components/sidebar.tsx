@@ -1,5 +1,14 @@
-import { Cloud, Server, Database, Settings, Users, BarChart3, Shield, Cpu } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import {
+  Cloud,
+  Server,
+  Database,
+  Settings,
+  Users,
+  BarChart3,
+  Shield,
+  Cpu,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const menuItems = [
   { icon: Server, label: "Виртуал сервер", active: false },
@@ -10,7 +19,7 @@ const menuItems = [
   { icon: BarChart3, label: "App платформ", active: false },
   { icon: Users, label: "Дэлгүүр", active: false },
   { icon: Settings, label: "Миний хэсэг", active: false },
-]
+];
 
 export function Sidebar() {
   return (
@@ -25,7 +34,9 @@ export function Sidebar() {
       <div className="p-4 border-b border-blue-500">
         <div className="bg-blue-700 rounded-lg p-3">
           <div className="text-sm opacity-90">Төслийн эрх</div>
-          <div className="text-xs bg-blue-800 rounded px-2 py-1 mt-1 inline-block">Эзэмшигч</div>
+          <div className="text-xs bg-blue-800 rounded px-2 py-1 mt-1 inline-block">
+            Эзэмшигч
+          </div>
         </div>
         <div className="mt-2 text-sm">itsoftware027@gmail.com</div>
       </div>
@@ -50,5 +61,5 @@ export function Sidebar() {
         </ul>
       </nav>
     </div>
-  )
+  );
 }
