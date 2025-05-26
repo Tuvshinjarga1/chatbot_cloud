@@ -32,8 +32,11 @@
 4. Энэ token-г `.env.local` файлд хадгалах:
 
 ```bash
-NEXT_PUBLIC_CHATWOOT_WEBSITE_TOKEN=your_copied_website_token_here
+# Танай бодит website token
+NEXT_PUBLIC_CHATWOOT_WEBSITE_TOKEN=atrhYjQJmaBw5vCLzm5yTkHN
 ```
+
+**Анхаар:** Танай website token нь `atrhYjQJmaBw5vCLzm5yTkHN` байна. Энэ token-г аюулгүй хадгална уу!
 
 ### 4. Widget тохиргоо
 

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="mn">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chatwoot Тест - Cloud MN</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .container {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .test-button {
+        background: #2563eb;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        cursor: pointer;
+        margin: 10px;
+        font-size: 14px;
+      }
+      .test-button:hover {
+        background: #1d4ed8;
+      }
+      .status {
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 6px;
+        border-left: 4px solid #2563eb;
+        background: #eff6ff;
+      }
+      .success {
+        border-left-color: #10b981;
+        background: #ecfdf5;
+        color: #065f46;
+      }
+      .error {
+        border-left-color: #ef4444;
+        background: #fef2f2;
+        color: #991b1b;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🤖 Chatwoot Интеграци Тест</h1>
+
+      <div class="status" id="status">Chatwoot SDK ачаалж байна...</div>
+
+      <h2>Тест товчнууд:</h2>
+      <button class="test-button" onclick="testChatwootWidget()">
+        Chatwoot Widget нээх
+      </button>
+
+      <button class="test-button" onclick="testWithCustomData()">
+        Custom Data-тай нээх
+      </button>
+
+      <button class="test-button" onclick="checkSDKStatus()">
+        SDK статус шалгах
+      </button>
+
+      <h2>Тохиргооны мэдээлэл:</h2>
+      <ul>
+        <li><strong>Website Token:</strong> atrhYjQJmaBw5vCLzm5yTkHN</li>
+        <li><strong>Base URL:</strong> https://app.chatwoot.com</li>
+        <li><strong>SDK Path:</strong> /packs/js/sdk.js</li>
+      </ul>
+
+      <h2>Тест хийх заавар:</h2>
+      <ol>
+        <li>
+          Энэ хуудас ачаалагдсаны дараа Chatwoot SDK автоматаар ачаалагдана
+        </li>
+        <li>
+          "Chatwoot Widget нээх" товчийг дарж widget нээгдэх эсэхийг шалгана уу
+        </li>
+        <li>Widget дээр мессеж илгээж үзнэ үү</li>
+        <li>Chatwoot dashboard-д орж мессеж ирсэн эсэхийг шалгана уу</li>
+      </ol>
+    </div>
+
+    <!-- Chatwoot SDK -->
+    <script>
+      (function (d, t) {
+        var BASE_URL = "https://app.chatwoot.com";
+        var g = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+        g.src = BASE_URL + "/packs/js/sdk.js";
+        g.defer = true;
+        g.async = true;
+        s.parentNode.insertBefore(g, s);
+        g.onload = function () {
+          window.chatwootSDK.run({
+            websiteToken: "atrhYjQJmaBw5vCLzm5yTkHN",
+            baseUrl: BASE_URL,
+            locale: "mn",
+          });
+
+          updateStatus("Chatwoot SDK амжилттай ачаалагдлаа!", "success");
+        };
+        g.onerror = function () {
+          updateStatus("Chatwoot SDK ачаалахад алдаа гарлаа!", "error");
+        };
+      })(document, "script");
+
+      function updateStatus(message, type = "info") {
+        const statusEl = document.getElementById("status");
+        statusEl.textContent = message;
+        statusEl.className = `status ${type}`;
+      }
+
+      function testChatwootWidget() {
+        if (window.chatwootSDK) {
+          window.chatwootSDK.toggle("open");
+          updateStatus("Chatwoot widget нээгдлээ!", "success");
+        } else {
+          updateStatus("Chatwoot SDK ачаалагдаагүй байна!", "error");
+        }
+      }
+
+      function testWithCustomData() {
+        if (window.chatwootSDK) {
+          window.chatwootSDK.setCustomAttributes({
+            userId: "test-user-" + Date.now(),
+            source: "test-page",
+            testMode: true,
+            timestamp: new Date().toISOString(),
+          });
+          window.chatwootSDK.toggle("open");
+          updateStatus("Custom data-тай widget нээгдлээ!", "success");
+        } else {
+          updateStatus("Chatwoot SDK ачаалагдаагүй байна!", "error");
+        }
+      }
+
+      function checkSDKStatus() {
+        if (window.chatwootSDK) {
+          updateStatus("✅ Chatwoot SDK бэлэн байна!", "success");
+          console.log("Chatwoot SDK:", window.chatwootSDK);
+        } else {
+          updateStatus("❌ Chatwoot SDK ачаалагдаагүй байна!", "error");
+        }
+      }
+
+      // 3 секундын дараа статус шалгах
+      setTimeout(checkSDKStatus, 3000);
+    </script>
+  </body>
+</html>
